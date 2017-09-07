@@ -18,7 +18,8 @@ class Options():
                             help='path to config file for task')
         parser.add_argument('--data', type=str, default='config.imagenet',
                             help='path to config file for data')
-        parser.add_argument('--model', type=str, default='config.baselines.train-matching-net',
+        parser.add_argument('--model', type=str, default='config.lstm.train-imagenet-5shot',
+        #parser.add_argument('--model', type=str, default='config.baselines.train-matching-net',
                             help='path to config file for model')
         parser.add_argument('--test', type=str, default='-',
                             help='path to config file for test details')

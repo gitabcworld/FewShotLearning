@@ -13,12 +13,18 @@ import torch.nn.init as init
 import numpy as np
 import math
 
-def convLayer(opt, nInput, nOutput, k):
+def convLayer(opt, layer_pos, nInput, nOutput, k ):
     "3x3 convolution with padding"
+    #if 'BN_momentum' in opt.keys():
+    #    batchNorm = nn.BatchNorm2d(nOutput,momentum=opt['BN_momentum'])
+    #else:
+    #    batchNorm = nn.BatchNorm2d(nOutput)
+        
     seq = nn.Sequential(
         nn.Conv2d(nInput, nOutput, kernel_size=k,
                   stride=1, padding=1, bias=True),
-        nn.BatchNorm2d(nOutput),
+        #batchNorm,
+        opt['bnorm2d'][layer_pos],
         nn.ReLU(True),
         nn.MaxPool2d(kernel_size=2, stride=2)
     )
@@ -32,25 +38,21 @@ class Classifier(nn.Module):
     def __init__(self, opt):
         super(Classifier, self).__init__()
 
-        nFilters = 64
         finalSize = int(math.floor(opt['nIn'] / (2 * 2 * 2 * 2)))
 
-        self.layer1 = convLayer(opt, opt['nDepth'], nFilters, 3)
-        self.layer2 = convLayer(opt, nFilters, nFilters, 3)
-        self.layer3 = convLayer(opt, nFilters, nFilters, 3)
-        self.layer4 = convLayer(opt, nFilters, nFilters, 3)
+        self.layer1 = convLayer(opt, 0, opt['nDepth'], opt['nFilters'], 3)
+        self.layer2 = convLayer(opt, 1, opt['nFilters'], opt['nFilters'], 3)
+        self.layer3 = convLayer(opt, 2, opt['nFilters'], opt['nFilters'], 3)
+        self.layer4 = convLayer(opt, 3, opt['nFilters'], opt['nFilters'], 3)
 
-        self.outSize = nFilters*finalSize*finalSize
+        self.outSize = opt['nFilters']*finalSize*finalSize
         self.classify = opt['classify']
         if self.classify:
-            self.layer5 = nn.Linear(nFilters*finalSize*finalSize, opt['nClasses']['train'])
-            self.outSize = opt['nClasses']['train']
+            self.layer5 = nn.Linear(opt['nFilters']*finalSize*finalSize, opt['nClasses']['train'])
+        self.outSize = opt['nClasses']['train']
 
         # Initialize layers
-        self.weights_init(self.layer1)
-        self.weights_init(self.layer2)
-        self.weights_init(self.layer3)
-        self.weights_init(self.layer4)
+        self.reset()
 
     def weights_init(self,module):
         for m in module.modules():
@@ -60,6 +62,12 @@ class Classifier(nn.Module):
             elif isinstance(m, nn.BatchNorm2d):
                 m.weight.data.fill_(1)
                 m.bias.data.zero_()
+
+    def reset(self):
+        self.weights_init(self.layer1)
+        self.weights_init(self.layer2)
+        self.weights_init(self.layer3)
+        self.weights_init(self.layer4)
 
     def forward(self, x):
         """
@@ -85,7 +93,7 @@ class MatchingNetClassifier():
             self.criterion = nn.CrossEntropyLoss()
         else:
             self.criterion = []
-        self.nParams = np.sum([1 for i in self.net.parameters()])
+        self.nParams = sum([i.view(-1).size()[0] for i in self.net.parameters()])
         self.outSize = self.net.outSize
 
 def build(opt):

@@ -19,8 +19,8 @@ def params(opt):
     opt['weight_decay'] = 1e-4
     opt['maxGradNorm'] = 0.25
 
-    opt['batchSize'] = {'1': 5, '5': 5}
-    opt['nEpochs'] = {'1': 12, '5': 5}
+    opt['batchSize'] = {1: 5, 5: 5}
+    opt['nEpochs'] = {1: 12, 5: 5}
 
     opt['nEpisode'] = 7500
     opt['nValidationEpisode'] = 100

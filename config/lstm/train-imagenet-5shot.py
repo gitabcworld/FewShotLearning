@@ -10,7 +10,10 @@
 def params(opt):
     opt['learner'] = 'model.lstm-classifier'
     opt['metaLearner'] = 'model.lstm.train-lstm'
+
     opt['BN_momentum'] = 0.95
+    opt['classify'] = True
+    opt['useDropout'] = False
 
     opt['optimMethod'] = 'adam'
     opt['lr'] = 1e-03
@@ -18,11 +21,11 @@ def params(opt):
     opt['weight_decay'] = 1e-4
     opt['maxGradNorm'] = 0.25
 
-    opt['batchSize'] = {'1':5, '5':25}
-    opt['nEpochs'] = {'1': 5, '5': 8}
+    opt['batchSize'] = {1:5, 5:25}
+    opt['nEpochs'] = {1: 5, 5: 8}
 
     opt['nEpisode'] = 50000
     opt['nValidationEpisode'] = 100
-    opt['printPer'] = 1000
+    opt['printPer'] = 100
     opt['useCUDA'] = True
     return opt

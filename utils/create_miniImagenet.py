@@ -17,12 +17,12 @@ https://github.com/twitter/meta-learning-lstm/tree/master/data/miniImagenet
 import numpy as np
 import csv
 import glob, os
-#from shutil import copyfile
+from shutil import copyfile
 import cv2
 from tqdm import tqdm
 
 pathImageNet = '/home/aberenguel/Dataset/Imagenet/ILSVRC2012_img_train'
-pathminiImageNet = '/home/aberenguel/Dataset/miniImagenet/'
+pathminiImageNet = '/home/aberenguel/TensorFlow/maml/data/miniImagenet/'
 pathImages = os.path.join(pathminiImageNet,'images/')
 filesCSVSachinRavi = [os.path.join(pathminiImageNet,'train.csv'),
                       os.path.join(pathminiImageNet,'val.csv'),
@@ -59,10 +59,10 @@ for filename in filesCSVSachinRavi:
             selected_images = np.array(index_sorted)[np.array(index_selected) - 1]
             for i in np.arange(len(selected_images)):
                 # read file and resize to 84x84x3
-                im = cv2.imread(os.path.join(pathImageNet,lst_files[selected_images[i]]))
-                im_resized = cv2.resize(im, (84, 84), interpolation=cv2.INTER_AREA)
-                cv2.imwrite(os.path.join(pathImages, images[c][i]),im_resized)
-                #copyfile(os.path.join(pathImageNet,lst_files[selected_images[i]]),os.path.join(pathImages, images[c][i]))
+                #im = cv2.imread(os.path.join(pathImageNet,lst_files[selected_images[i]]))
+                #im_resized = cv2.resize(im, (84, 84), interpolation=cv2.INTER_AREA)
+                #cv2.imwrite(os.path.join(pathImages, images[c][i]),im_resized)
+                copyfile(os.path.join(pathImageNet,lst_files[selected_images[i]]),os.path.join(pathImages, images[c][i]))
 
 
 

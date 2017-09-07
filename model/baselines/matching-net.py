@@ -45,7 +45,6 @@ class MatchingNet(nn.Module):
         trainTarget = input['trainTarget']
         testInput = input['testInput']
         testTarget = input['testTarget']
-        batchSize = input['testInput'].size(0)
 
         # Create one-hot vector
         trainTarget = trainTarget.view(-1,1)
@@ -56,8 +55,8 @@ class MatchingNet(nn.Module):
         y_one_hot = y_one_hot.float().scatter_(1, trainTarget, 1)
 
         # embed support set & test items using g and f respectively
-        gS = self.embedModel.embedS(trainInput)
-        fX = self.embedModel.embedX(testInput, gS, opt['steps'])
+        gS = self.embedModel.embedG(trainInput)
+        fX = self.embedModel.embedF(testInput, gS, opt['steps'])
 
         # repeat tensors so that can get cosine sims in one call
         repeatgS = gS.repeat(fX.size(0),1)
@@ -144,7 +143,6 @@ def run(opt,data):
                                     opt['pathModelG'])
 
     cost = 0
-    evalCounter = 1
     timer = time.time()
 
     #################################################################

@@ -12,8 +12,8 @@ def params(opt):
     opt['metaLearner'] = 'model.baselines.matching-net'
 
     # simple or FCE - embedding model?
-    opt['embedModel'] = 'model.baselines.simple-embedding'
-    #opt['embedModel'] = 'model.baselines.FCE-embedding'
+    # opt['embedModel'] = 'model.baselines.simple-embedding'
+    opt['embedModel'] = 'model.baselines.fce-embedding'
 
     opt['steps'] = 3
     opt['classify'] = False
