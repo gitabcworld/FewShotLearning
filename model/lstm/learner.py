@@ -49,7 +49,7 @@ class Learner(nn.Module):
     def forward(self, inputs, targets ):
 
         output = self.modelF.net(inputs)
-        loss = self.model.criterion(output, targets)
+        loss = self.modelF.criterion(output, targets)
         return output, loss
 
     def feval(self, inputs, targets):
@@ -59,7 +59,6 @@ class Learner(nn.Module):
         outputs = self.model.net(inputs)
         loss = self.model.criterion(outputs, targets)
         loss.backward()
-        # TODO: update weights?
         grads = torch.cat([param.grad.view(-1) for param in self.model.net.parameters()], 0)
         return grads,loss
 

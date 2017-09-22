@@ -35,13 +35,13 @@ def fitLabelsToRange(dictLabels,labels):
     labels = labels_temp
     return torch.from_numpy(labels)
 
-
 def unflattenParams(model,flatParams):
     flatParams = flatParams.squeeze()
     indx = 0
     for param in model.net.parameters():
         lengthParam = param.view(-1).size()[0]
-        param.data = flatParams[indx:indx+lengthParam].view_as(param).clone()
+        param.data = flatParams[indx:indx+lengthParam].view_as(param).data
         indx = indx + lengthParam
+    a = 0
 
 

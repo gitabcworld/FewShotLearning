@@ -24,7 +24,7 @@ def params(opt):
     opt['batchSize'] = {1:5, 5:25}
     opt['nEpochs'] = {1: 5, 5: 8}
 
-    opt['nEpisode'] = 50000
+    opt['nEpisode'] = 500
     opt['nValidationEpisode'] = 100
     opt['printPer'] = 100
     opt['useCUDA'] = True

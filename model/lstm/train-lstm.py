@@ -85,7 +85,9 @@ def run(opt,data):
     #################################################################
 
     # Init optimizer
-    optimizer = create_optimizer(opt, metaLearner.params.values())
+    #optimizer = create_optimizer(opt, metaLearner.params.values())
+    #optimizer = create_optimizer(opt, learner.modelF.net.parameters())
+    optimizer = create_optimizer(opt, list(metaLearner.lstm.parameters()) + list(metaLearner.lstm2.parameters()))
 
     # train episode loop
     for episodeTrain,(x_support_set, y_support_set, x_target, target_y) in enumerate(data['train']):
@@ -119,7 +121,7 @@ def run(opt,data):
                                             opt['batchSize'][opt['nTrainShot']])
         optimizer.zero_grad()
         loss.backward()
-        metaLearner.gradNorm()
+        metaLearner.gradNorm(loss)
         optimizer.step()
 
         # Adjust learning rate

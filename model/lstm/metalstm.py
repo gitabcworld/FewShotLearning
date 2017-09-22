@@ -14,13 +14,25 @@ class MetaLSTMCell(nn.Module):
         super(MetaLSTMCell, self).__init__()
         self.input_size = input_size
         self.hidden_size = hidden_size
-        self.WF = nn.Parameter(torch.FloatTensor(hidden_size + 2,1),requires_grad = True)
-        self.WI = nn.Parameter(torch.FloatTensor(hidden_size + 2, 1),requires_grad = True)
+
+        self.WF = nn.Parameter(torch.FloatTensor(hidden_size + 2, 1))
+        self.WI = nn.Parameter(torch.FloatTensor(hidden_size + 2, 1))
         # initial cell state is a param
-        self.cI = nn.Parameter(torch.FloatTensor(input_size, 1),requires_grad = True)
-        self.bI = nn.Parameter(torch.FloatTensor(1, 1),requires_grad = True)
-        self.bF = nn.Parameter(torch.FloatTensor(1, 1),requires_grad = True)
-        self.m = nn.Parameter(torch.FloatTensor(1),requires_grad = True)
+        self.cI = nn.Parameter(torch.FloatTensor(input_size, 1))
+        self.bI = nn.Parameter(torch.FloatTensor(1, 1))
+        self.bF = nn.Parameter(torch.FloatTensor(1, 1))
+        self.m = nn.Parameter(torch.FloatTensor(1))
+
+        '''
+        self.WF = Variable(torch.FloatTensor(hidden_size + 2, 1), requires_grad=True)
+        self.WI = Variable(torch.FloatTensor(hidden_size + 2, 1), requires_grad=True)
+        # initial cell state is a param
+        self.cI = Variable(torch.FloatTensor(input_size, 1), requires_grad=True)
+        self.bI = Variable(torch.FloatTensor(1, 1), requires_grad=True)
+        self.bF = Variable(torch.FloatTensor(1, 1), requires_grad=True)
+        self.m = Variable(torch.FloatTensor(1), requires_grad=True)
+        '''
+
         self.reset_parameters()
 
     def reset_parameters(self):
@@ -52,10 +64,10 @@ class MetaLSTMCell(nn.Module):
         iS = torch.cat((cS, iS), 1)
 
         fS = torch.mm(torch.cat((input_,fS), 1),self.WF)
-        fS = fS + self.bF.expand_as(fS)
+        fS += self.bF.expand_as(fS)
 
         iS = torch.mm(torch.cat((input_,iS), 1),self.WI)
-        iS = iS + self.bI.expand_as(iS)
+        iS += self.bI.expand_as(iS)
 
         # next delta
         deltaS = self.m * deltaS - nn.Sigmoid()(iS).mul(grads_)
@@ -111,7 +123,8 @@ class MetaLSTM(nn.Module):
             #hx = hx_next
         #output = torch.stack(output, 0)
         #return output,hx
-        return hx[2],hx
+        #return hx[2],hx
+        return hx
 
     def forward(self, input_, length=None, hx=None):
 
@@ -138,7 +151,7 @@ class MetaLSTM(nn.Module):
         cS_n = []
         deltaS_n = []
         for layer in range(self.num_layers):
-            cS_new,hx_new = MetaLSTM._forward_rnn(
+            hx_new = MetaLSTM._forward_rnn(
                 cell=self.cells[layer], input_=x_input,
                 grads_= grad_input, length=length, hx=hx)
             fS_n.append(hx_new[0])
@@ -151,5 +164,5 @@ class MetaLSTM(nn.Module):
         fS_n = torch.stack(fS_n, 0)
         deltaS_n = torch.stack(deltaS_n, 0)
         # return cS and the actual state
-        return cS_n, (fS_n, iS_n, cS_n, deltaS_n)
+        return (fS_n, iS_n, cS_n, deltaS_n)
 

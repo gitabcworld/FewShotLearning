@@ -7,6 +7,7 @@ import model.lstm.metalstm as metalstm
 from model.lstm.recurrentLSTMNetwork import RecurrentLSTMNetwork
 from model.lstm.lstmhelper import preprocess
 from utils import util
+from visualize.visualize import make_dot
 
 class MetaLearner(nn.Module):
     def __init__(self, opt):
@@ -15,9 +16,11 @@ class MetaLearner(nn.Module):
         self.nHidden = opt['nHidden'] if 'nHidden' in opt.keys() else 20
         self.maxGradNorm = opt['maxGradNorm'] if 'maxGradNorm' in opt.keys() else 0.25
 
-        inputFeatures = 4 #loss(2) + preGrad(2) = 4
+        #inputFeatures = 4 #loss(2) + preGrad(2) = 4
+        inputFeatures = 2  # loss(2) + preGrad(2) = 4
         batchNormalization1 = opt['BN1'] if 'BN1' in opt.keys() else False
         maxBatchNormalizationLayers = opt['steps'] if 'steps' in opt.keys() else 1
+        batchNormalization1 = False
         if batchNormalization1:
             self.lstm = bnlstm.LSTM(cell_class=bnlstm.BNLSTMCell, input_size=inputFeatures,
                          hidden_size=self.nHidden, batch_first=True,
@@ -75,10 +78,20 @@ class MetaLearner(nn.Module):
 
         # Set initial cell state = learner's initial parameters
         initialParams = torch.cat([value.view(-1) for key,value in opt['learnerParams'].items()], 0)
-        [params[0] for params in self.lstm2.named_parameters()]
+        #self.lstm2.cells[0].cI = initialParams.unsqueeze(1).clone()
+
+        #torch.nn.Parameter(initial_param['weight'])
         for params in self.lstm2.named_parameters():
             if "cell_0.cI" in params[0]:
-                params[1].data = initialParams.data
+                params[1].data = initialParams.data.clone()
+        # self.lstm2.cells[0].cI.data = initialParams.view_as(self.lstm2.cells[0].cI).clone()
+        a = 0
+
+        #for params in self.lstm2.parameters():
+        #    params.retain_grad()
+
+        #for params in self.lstm.parameters():
+        #    params.retain_grad()
 
 
     def forward(self, learner, trainInput, trainTarget, testInput, testTarget
@@ -94,9 +107,12 @@ class MetaLearner(nn.Module):
         learner.set('training')
 
         # Set learner's initial parameters = initial cell state
-        for params in self.lstm2.named_parameters():
-            if "cell_0.cI" in params[0]:
-                util.unflattenParams(learner.model, params[1].data)
+        util.unflattenParams(learner.model, self.lstm2.cells[0].cI)
+
+        #for params in self.lstm2.named_parameters():
+        #    if "cell_0.cI" in params[0]:
+        #        util.unflattenParams(learner.model, params[1])
+        #util.unflattenParams(learner.model, self.lstm2.cells[0].cI)
 
         idx = 0
         for s in range(steps):
@@ -105,45 +121,70 @@ class MetaLearner(nn.Module):
                 x = trainInput[i:batchSize,:]
                 y = trainTarget[i:batchSize]
 
-                if idx > 0:
-                    # break computational graph
-                    learnerParams = output.detach()
-                    # Unflatten params and copy parameters to learner network
-                    util.unflattenParams(learner.model,learnerParams.data)
+                #if idx > 0:
+                #    # break computational graph
+                #    learnerParams = output.detach()
+                #    # Unflatten params and copy parameters to learner network
+                #    util.unflattenParams(learner.model,learnerParams)
 
                 # get gradient and loss w/r/t learnerParams for input+label
-                gradLearner, lossLearner = learner.feval(x,y)
-                gradLearner = gradLearner.view(gradLearner.size()[0], 1, 1)
+                grad_model, loss_model = learner.feval(x,y)
+                grad_model = grad_model.view(grad_model.size()[0], 1, 1)
 
+                # Delete albert
+                inputs = torch.cat((grad_model, loss_model.expand_as(grad_model)), 2)
+                '''
                 # preprocess grad & loss by DeepMind "Learning to learn"
-                preGrad, preLoss = preprocess(gradLearner,lossLearner)
-
+                preGrad, preLoss = preprocess(grad_model,loss_model)
                 # use meta-learner to get learner's next parameters
                 lossExpand = preLoss.expand_as(preGrad)
                 inputs = torch.cat((lossExpand,preGrad),2)
+                '''
                 output, self.lstm_h0_c0 = self.lstm(inputs, self.lstm_h0_c0)
-                output, self.lstm2_fS_iS_cS_deltaS = self.lstm2((output,gradLearner),
+                self.lstm2_fS_iS_cS_deltaS = self.lstm2((output,grad_model),
                                                                 self.lstm2_fS_iS_cS_deltaS)
+
+                ## Delete
+                util.unflattenParams(learner.modelF, self.lstm2_fS_iS_cS_deltaS[2])
+                output, loss = learner(testInput, testTarget)
+                #g = make_dot(loss)
+                #g.render('/home/aberenguel/tmp/g.gv', view=True)
+                #torch.autograd.grad(loss, list(self.lstm2.parameters()) + list(self.lstm.parameters()))
+                ######
+
+                # get the internal cell state
+                output = self.lstm2_fS_iS_cS_deltaS[2]
+
+                # Unflatten params and copy parameters to learner network
+                util.unflattenParams(learner.model, output)
+
                 idx = idx + 1
 
         # Unflatten params and copy parameters to learner network
-        util.unflattenParams(learner.modelF, output.data)
+        util.unflattenParams(learner.modelF, output)
 
         ## get loss + predictions from learner.
         ## use batch-stats when meta-training; otherwise, use running-stats
         if evaluate:
             learner.set('evaluate')
-        return learner(testInput,testTarget)
+        # Do a dummy forward / backward pass to get the correct grads into learner
+        output, loss = learner(testInput, testTarget)
+
+        # replace the gradients with the lstm2
+        torch.autograd.grad(loss, self.lstm2.parameters())
+
+        return output, loss
 
 
-    def gradNorm(self):
+    def gradNorm(self, loss):
 
-        norm = 0
+        print('Grads lstm + lstm2:')
         for params in self.lstm.parameters():
-            params.grad
+            print(params.grad)
 
         for params in self.lstm2.parameters():
-            params.grad
+            print(params.grad)
+        a = 0
 
     def setCuda(self, value = True):
         if value:
